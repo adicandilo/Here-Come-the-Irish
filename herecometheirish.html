@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Here Come The Irish</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0c2340; --gold:#c99700; --gold-soft:#f3e6bf; --green:#1e7b3c; --red:#b3261e;
+  --bg:#f6f4ee; --card:#ffffff; --ink:#14213a; --muted:#5d6779; --line:#e2ddd0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#08162a; --card:#10233f; --ink:#f1ede2; --muted:#a8b3c6; --line:#22385a; --gold-soft:#3a3214;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;}
+header{background:var(--navy);color:#fff;text-align:center;padding:22px 16px 18px;border-bottom:4px solid var(--gold)}
+header h1{font-family:Oswald,sans-serif;font-size:clamp(28px,7vw,44px);margin:0;letter-spacing:.04em;text-transform:uppercase}
+header h1 span{color:var(--gold)}
+header p{margin:6px 0 0;color:#c9d3e3;font-size:14px}
+main{max-width:560px;margin:0 auto;padding:20px 16px 48px}
+.progress{display:flex;gap:6px;justify-content:center;margin-bottom:18px}
+.dot{width:38px;height:8px;border-radius:4px;background:var(--line)}
+.dot.cur{background:var(--gold)} .dot.ok{background:var(--green)} .dot.bad{background:var(--red)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 18px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.qnum{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;text-align:center}
+.matchup{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center;margin-bottom:8px}
+.team{font-family:Oswald,sans-serif;font-size:clamp(18px,5vw,24px);line-height:1.15}
+.team .score{display:block;font-size:clamp(30px,9vw,44px);margin-top:4px}
+.team.nd{color:var(--navy)} @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .team.nd{color:#e9eef7}}
+.team .rank{display:block;font:600 12px Inter,sans-serif;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.team.opp{color:var(--gold)}
+.vs{font-family:Oswald;color:var(--muted);font-size:16px}
+.meta{text-align:center;color:var(--muted);font-size:14px;margin:6px 0 18px}
+.prompt{text-align:center;font-weight:600;margin-bottom:14px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.feedback{line-height:1.4}
+button.opt{font:600 15px Inter,sans-serif;padding:14px 10px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;transition:transform .08s,border-color .15s}
+button.opt:hover:not(:disabled){border-color:var(--gold);transform:translateY(-1px)}
+button.opt:disabled{cursor:default}
+button.opt.right{background:var(--green);border-color:var(--green);color:#fff}
+button.opt.wrong{background:var(--red);border-color:var(--red);color:#fff}
+.feedback{text-align:center;margin-top:16px;min-height:22px;font-weight:600}
+.next{display:block;margin:14px auto 0;font:700 16px Oswald,sans-serif;letter-spacing:.06em;text-transform:uppercase;background:var(--navy);color:#fff;border:2px solid var(--gold);border-radius:10px;padding:12px 28px;cursor:pointer}
+.hidden{display:none}
+.final{text-align:center}
+.final h2{font-family:Oswald;font-size:30px;margin:0 0 6px}
+.big{font-family:Oswald;font-size:64px;color:var(--gold);margin:4px 0}
+.grid{font-size:28px;letter-spacing:4px;margin:8px 0 14px}
+.recap{text-align:left;margin:16px 0;border-top:1px solid var(--line)}
+.recap div{padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.countdown{color:var(--muted);font-size:14px;margin-top:14px}
+.streak{display:flex;justify-content:center;gap:24px;margin:10px 0}
+.streak b{display:block;font-family:Oswald;font-size:26px}
+.streak span{font-size:12px;color:var(--muted);text-transform:uppercase}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:0 16px 24px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Here Come <span>The Irish</span></h1>
+  <p>5 daily matchups. Pick the winner.</p>
+</header>
+<main>
+  <div class="progress" id="progress"></div>
+  <div class="card" id="game"></div>
+</main>
+<footer id="foot"></footer>
+
+<script>
+// Games where Notre Dame lost to an opponent that was unranked in the AP poll at kickoff.
+// site: Home / Away / Neutral (from Notre Dame's perspective)
+const GAMES = [
+  {year:2024, opp:"Northern Illinois", ndr:5, os:16, nds:14, site:"Home"},
+  {year:2023, opp:"Clemson", ndr:12,           os:31, nds:23, site:"Away"},
+  {year:2022, opp:"Marshall", ndr:8,          os:26, nds:21, site:"Home"},
+  {year:2022, opp:"Stanford", ndr:null,          os:16, nds:14, site:"Home"},
+  {year:2016, opp:"Texas", ndr:10,             os:50, nds:47, site:"Away", note:"2OT"},
+  {year:2016, opp:"Duke", ndr:null,              os:38, nds:35, site:"Home"},
+  {year:2016, opp:"NC State", ndr:null,          os:10, nds:3,  site:"Away", note:"Played in a hurricane"},
+  {year:2014, opp:"Northwestern", ndr:15,      os:43, nds:40, site:"Home", note:"OT"},
+  {year:2013, opp:"Pittsburgh", ndr:24,        os:28, nds:21, site:"Away"},
+  {year:2011, opp:"South Florida", ndr:16,     os:23, nds:20, site:"Home", note:"Season opener, two weather delays"},
+  {year:2011, opp:"Michigan", ndr:null,          os:35, nds:31, site:"Away", note:"First night game at the Big House"},
+  {year:2010, opp:"Michigan", ndr:null,          os:28, nds:24, site:"Home"},
+  {year:2010, opp:"Navy", ndr:null,              os:35, nds:17, site:"Neutral", note:"Played at the Meadowlands"},
+  {year:2010, opp:"Tulsa", ndr:null,             os:28, nds:27, site:"Home"},
+  {year:2009, opp:"Navy", ndr:19,              os:23, nds:21, site:"Home"},
+  {year:2009, opp:"Connecticut", ndr:null,       os:33, nds:30, site:"Home", note:"2OT"},
+  {year:2008, opp:"Syracuse", ndr:null,          os:24, nds:23, site:"Home"},
+  {year:2007, opp:"Georgia Tech", ndr:null,      os:33, nds:3,  site:"Home", note:"Season opener"},
+  {year:2007, opp:"Michigan", ndr:null,          os:38, nds:0,  site:"Away"},
+  {year:2007, opp:"Navy", ndr:null,              os:46, nds:44, site:"Home", note:"3OT — snapped a 43-game series streak"},
+  {year:2007, opp:"Air Force", ndr:null,         os:41, nds:24, site:"Home"},
+  {year:2004, opp:"BYU", ndr:null,               os:20, nds:17, site:"Away", note:"Season opener"},
+  {year:2004, opp:"Pittsburgh", ndr:24,        os:41, nds:38, site:"Home"},
+];
+
+const DISTRACTORS = ["Purdue","Michigan State","USC","Boston College","Stanford","Navy","Pittsburgh",
+  "Georgia Tech","Air Force","Syracuse","Wake Forest","Duke","North Carolina","Virginia Tech","Louisville",
+  "Miami","Florida State","Army","Arizona State","Texas","Michigan","Clemson","Northwestern","Wisconsin",
+  "Iowa","Indiana","Rutgers","Maryland","Cincinnati","Tulsa","Connecticut","South Florida","Marshall",
+  "Northern Illinois","BYU","UCLA","California","Washington","Oklahoma","Tennessee","Virginia","Ball State","Toledo"];
+
+// ---- daily seeding ----
+function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function seededRand(seedStr){let h=1779033703^seedStr.length;for(let i=0;i<seedStr.length;i++){h=Math.imul(h^seedStr.charCodeAt(i),3432918353);h=h<<13|h>>>19;}
+  return function(){h=Math.imul(h^(h>>>16),2246822507);h=Math.imul(h^(h>>>13),3266489909);h^=h>>>16;return (h>>>0)/4294967296;};}
+function shuffle(arr,rand){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+const KEY = todayKey();
+const rand = seededRand("herecometheirish-"+KEY);
+const QUESTIONS = shuffle(GAMES,rand).slice(0,5).map(g=>({...g, options: shuffle(["Notre Dame",g.opp],rand)}));
+
+// ---- storage (best effort) ----
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+let state = load("hcti-"+KEY,{answers:[]}); // answers: chosen team per question
+let stats = load("hcti-stats",{played:0,streak:0,best:0,last:null,totalCorrect:0});
+
+const game=document.getElementById("game"), prog=document.getElementById("progress");
+
+function renderProgress(cur){
+  prog.innerHTML="";
+  QUESTIONS.forEach((q,i)=>{const d=document.createElement("div");d.className="dot";
+    if(i<state.answers.length) d.classList.add(state.answers[i]===q.opp?"ok":"bad");
+    else if(i===cur) d.classList.add("cur");
+    prog.appendChild(d);});
+}
+
+function renderQuestion(i){
+  const q=QUESTIONS[i]; renderProgress(i);
+  const siteTxt = q.site==="Home"?"at Notre Dame Stadium":q.site==="Away"?"on the road":"at a neutral site";
+  game.innerHTML=`
+    <div class="qnum">Question ${i+1} of 5 · ${q.year} season</div>
+    <div class="matchup">
+      <div class="team nd"><span class="rank">${q.ndr?"No. "+q.ndr:"Unranked"}</span>Notre Dame<span class="score" id="nds">–</span></div>
+      <div class="vs">VS</div>
+      <div class="team opp"><span class="rank">Unranked</span>${q.opp}<span class="score" id="os">–</span></div>
+    </div>
+    <div class="meta">${siteTxt}</div>
+    <div class="prompt">Who won?</div>
+    <div class="opts">${q.options.map(o=>`<button class="opt">${o}</button>`).join("")}</div>
+    <div class="feedback" id="fb"></div>
+    <button class="next hidden" id="next">${i<4?"Next game":"See results"}</button>`;
+  game.querySelectorAll("button.opt").forEach(b=>b.onclick=()=>answer(i,b.textContent));
+}
+
+function answer(i,choice){
+  const q=QUESTIONS[i]; state.answers[i]=choice; save("hcti-"+KEY,state);
+  game.querySelectorAll("button.opt").forEach(b=>{b.disabled=true;
+    if(b.textContent===q.opp)b.classList.add("right"); else if(b.textContent===choice)b.classList.add("wrong");});
+  document.getElementById("nds").textContent=q.nds;
+  document.getElementById("os").textContent=q.os;
+  const fb=document.getElementById("fb");
+  fb.textContent=(choice===q.opp?"☘️ Correct — the upset! ":"❌ Ouch. "+q.opp+" pulled the upset. ")+"Final: "+q.opp+" "+q.os+"–"+q.nds+(q.note?" ("+q.note+")":"")+".";
+  fb.style.color=choice===q.opp?"var(--green)":"var(--red)";
+  renderProgress(i+1);
+  if(state.answers.length===5) finishStats();
+  const nx=document.getElementById("next"); nx.classList.remove("hidden");
+  nx.onclick=()=> i<4?renderQuestion(i+1):renderFinal();
+}
+
+function finishStats(){
+  if(stats.last===KEY) return;
+  const y=new Date(); y.setDate(y.getDate()-1);
+  const yKey=y.getFullYear()+"-"+String(y.getMonth()+1).padStart(2,"0")+"-"+String(y.getDate()).padStart(2,"0");
+  stats.streak = stats.last===yKey ? stats.streak+1 : 1;
+  stats.best=Math.max(stats.best,stats.streak); stats.played++; stats.last=KEY;
+  stats.totalCorrect += score(); save("hcti-stats",stats);
+}
+function score(){return QUESTIONS.filter((q,i)=>state.answers[i]===q.opp).length;}
+
+function renderFinal(){
+  renderProgress(5);
+  const s=score(), grid=QUESTIONS.map((q,i)=>state.answers[i]===q.opp?"🟩":"🟥").join("");
+  const msg=["Go back to Lot C.","Rough Saturday.","Bowl eligible-ish.","Solid. The Grotto approves.","Nearly perfect — Touchdown Jesus nods.","Perfect! Play like a champion today."][s];
+  game.innerHTML=`<div class="final">
+    <h2>Today's Score</h2><div class="big">${s}/5</div><div>${msg}</div>
+    <div class="grid">${grid}</div>
+    <div class="streak"><div><b>${stats.played}</b><span>Played</span></div><div><b>${stats.streak}</b><span>Streak</span></div><div><b>${stats.best}</b><span>Best</span></div></div>
+    <button class="next" id="share">Copy result</button>
+    <div class="recap">${QUESTIONS.map((q,i)=>`<div>${state.answers[i]===q.opp?"✅":"❌"} <b>${q.year}</b> — ${q.opp} ${q.os}, Notre Dame ${q.nds}</div>`).join("")}</div>
+    <div class="countdown" id="cd"></div></div>`;
+  document.getElementById("share").onclick=e=>{
+    const txt=`Here Come The Irish ${KEY}\n${grid} ${s}/5`;
+    (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>e.target.textContent="Copied!").catch(()=>prompt("Copy your result:",txt));
+  };
+  tick(); setInterval(tick,1000);
+}
+function tick(){
+  const now=new Date(), mid=new Date(now); mid.setHours(24,0,0,0);
+  const t=Math.floor((mid-now)/1000), h=Math.floor(t/3600), m=Math.floor(t%3600/60), sec=t%60;
+  const el=document.getElementById("cd"); if(el) el.textContent=`New games in ${h}h ${String(m).padStart(2,"0")}m ${String(sec).padStart(2,"0")}s`;
+  if(t<=1) location.reload();
+}
+
+document.getElementById("foot").textContent="Puzzle for "+KEY+" · Refreshes at midnight local time";
+if(state.answers.length>=5) renderFinal(); else renderQuestion(state.answers.length);
+</script>
+</body>
+</html>
